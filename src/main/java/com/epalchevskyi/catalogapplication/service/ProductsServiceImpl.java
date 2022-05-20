@@ -4,6 +4,8 @@ import com.epalchevskyi.catalogapplication.model.Product;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
@@ -12,7 +14,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProductsServiceImpl implements ProductsService{
-    private static Map<String, Product> PRODUCTS_MAP;
     private static List<Product> PRODUCTS_LIST;
 
     @PostConstruct
@@ -22,23 +23,23 @@ public class ProductsServiceImpl implements ProductsService{
 
         try {
             PRODUCTS_LIST = new ArrayList<>();
-            PRODUCTS_MAP = new HashMap<>();
             MappingIterator<Product> personIter = new CsvMapper().readerWithTypedSchemaFor(Product.class).readValues(file);
             PRODUCTS_LIST = personIter.readAll();
-
-            PRODUCTS_LIST.forEach(product -> PRODUCTS_MAP.put(product.getUniqId(), product));
         } catch (Exception e) {
             System.out.println("Error while reading data from file " + PATH_TO_CSV_FILE + ". Stack trace " +e.getMessage());
         }
     }
 
-    public List<Product> getProducts(String uniqId, String sku) {
-        if (uniqId != null) {
-            return Collections.singletonList(PRODUCTS_MAP.get(uniqId));
-        } else if (sku != null) {
-            return PRODUCTS_LIST.stream().filter(product -> product.getSku().equals(sku)).collect(Collectors.toList());
-        } else {
-            return PRODUCTS_LIST;
+    public List<Product> getProducts(List<String> uniqIds, String sku) {
+        List<Product> filteredList = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(uniqIds)) {
+            filteredList.addAll(PRODUCTS_LIST.stream().filter(product -> uniqIds.contains(product.getUniqId())).collect(Collectors.toList()));
         }
+
+        if (StringUtils.hasText(sku)) {
+            filteredList.addAll(PRODUCTS_LIST.stream().filter(product -> product.getSku().equals(sku)).collect(Collectors.toList()));
+        }
+
+        return filteredList;
     }
 }
